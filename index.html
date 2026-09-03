@@ -17,6 +17,8 @@
   @media (prefers-color-scheme: dark) {
     body { background: #121820; color: #e8eef5; }
     .encabezado, .espacio-formulario { background: #1b232e !important; border-color: #2b3644 !important; }
+    input, select, textarea { background: #121820 !important; color: #e8eef5 !important; border-color: #2b3644 !important; }
+    .contador { background: #22304a !important; color: #bcd4ff !important; }
   }
   .encabezado {
     width: 100%; max-width: 560px;
@@ -32,15 +34,46 @@
   .explicacion {
     margin: 0; font-size: 16px; line-height: 1.6; opacity: .9;
   }
+  .contador {
+    display: inline-block; margin-top: 16px;
+    background: #eaf1ff; color: #234;
+    border-radius: 999px; padding: 6px 16px;
+    font-size: 14px; font-weight: 600;
+  }
   .espacio-formulario {
     width: 100%; max-width: 560px;
     margin-top: 18px;
-    background: #fff; border: 2px dashed #c3cbd6; border-radius: 14px;
-    padding: 34px 26px; text-align: center;
+    background: #fff; border: 1px solid #dde3ea; border-radius: 14px;
+    padding: 28px 26px;
+    box-shadow: 0 10px 30px -18px rgba(0,0,0,.3);
   }
-  .espacio-formulario p { margin: 0 0 8px; }
-  .espacio-formulario p:last-child { margin-bottom: 0; }
-  .chica { font-size: 14px; opacity: .7; }
+  .campo { margin-bottom: 16px; text-align: left; }
+  .campo:last-of-type { margin-bottom: 0; }
+  label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .opcional { font-weight: 400; opacity: .6; }
+  input, select, textarea {
+    width: 100%; font: inherit; font-size: 16px;
+    padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #c3cbd6; background: #fff; color: inherit;
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  button {
+    width: 100%; margin-top: 18px;
+    font: inherit; font-size: 16px; font-weight: 600;
+    padding: 12px; border-radius: 8px; border: none;
+    background: #2d5bff; color: #fff; cursor: pointer;
+  }
+  button:disabled { opacity: .6; cursor: default; }
+  .mensaje-estado {
+    margin-top: 14px; font-size: 14px; text-align: center;
+    min-height: 20px;
+  }
+  .mensaje-estado.exito { color: #1a7f37; }
+  .mensaje-estado.error { color: #c0392b; }
+  @media (prefers-color-scheme: dark) {
+    .mensaje-estado.exito { color: #4ada80; }
+    .mensaje-estado.error { color: #ff8a75; }
+  }
 </style>
 </head>
 <body>
@@ -51,10 +84,93 @@
       con calma y en confianza: cada sugerencia ayuda a que este sea un mejor
       lugar para trabajar. Regístrala aquí.
     </p>
+    <p class="contador" id="contador">Cargando...</p>
   </header>
-  <main class="espacio-formulario" aria-label="Espacio para el formulario">
-    <p>Aquí va a ir el formulario para dejar tu sugerencia.</p>
-    <p class="chica">Todavía no está listo — es el siguiente paso.</p>
+
+  <main class="espacio-formulario">
+    <form id="form-sugerencia">
+      <div class="campo">
+        <label for="nombre">Nombre <span class="opcional">(opcional)</span></label>
+        <input type="text" id="nombre" name="nombre" autocomplete="name">
+      </div>
+      <div class="campo">
+        <label for="numero_empleado">Número de empleado <span class="opcional">(opcional)</span></label>
+        <input type="text" id="numero_empleado" name="numero_empleado" inputmode="numeric">
+      </div>
+      <div class="campo">
+        <label for="tipo_observacion">Tipo de observación</label>
+        <select id="tipo_observacion" name="tipo_observacion" required>
+          <option value="" disabled selected>Selecciona una opción</option>
+          <option value="Líderes">Líderes</option>
+          <option value="Organización">Organización</option>
+          <option value="Equipo">Equipo</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="mensaje">Tu sugerencia</label>
+        <textarea id="mensaje" name="mensaje" required></textarea>
+      </div>
+      <button type="submit">Enviar sugerencia</button>
+      <p class="mensaje-estado" id="mensaje-estado" role="status" aria-live="polite"></p>
+    </form>
   </main>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const supabase = createClient(
+      'https://ponomhzhgkvsnlxkgpmm.supabase.co',
+      'sb_publishable_yRd-RfexwwOh0FaDSzBhtg_ViJW2q6z'
+    );
+
+    const contador = document.getElementById('contador');
+    const form = document.getElementById('form-sugerencia');
+    const mensajeEstado = document.getElementById('mensaje-estado');
+
+    function textoContador(n) {
+      if (n === null) return 'No se pudo cargar el contador.';
+      if (n === 0) return 'Todavía no hay oportunidades de mejora registradas.';
+      if (n === 1) return '1 oportunidad de mejora registrada';
+      return `${n} oportunidades de mejora registradas`;
+    }
+
+    async function actualizarContador() {
+      const { count, error } = await supabase
+        .from('registros')
+        .select('*', { count: 'exact', head: true });
+      contador.textContent = textoContador(error ? null : count);
+    }
+
+    form.addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const boton = form.querySelector('button');
+      boton.disabled = true;
+      mensajeEstado.textContent = '';
+      mensajeEstado.className = 'mensaje-estado';
+
+      const datos = new FormData(form);
+      const renglon = {
+        nombre: datos.get('nombre').trim() || null,
+        numero_empleado: datos.get('numero_empleado').trim() || null,
+        tipo_observacion: datos.get('tipo_observacion'),
+        mensaje: datos.get('mensaje').trim(),
+      };
+
+      const { error } = await supabase.from('registros').insert(renglon);
+
+      if (error) {
+        mensajeEstado.textContent = 'No se pudo enviar. Intenta de nuevo en un momento.';
+        mensajeEstado.classList.add('error');
+      } else {
+        form.reset();
+        mensajeEstado.textContent = 'Gracias, tu sugerencia quedó registrada.';
+        mensajeEstado.classList.add('exito');
+        actualizarContador();
+      }
+      boton.disabled = false;
+    });
+
+    actualizarContador();
+  </script>
 </body>
 </html>
