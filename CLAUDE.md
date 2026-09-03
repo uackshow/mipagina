@@ -17,7 +17,18 @@ Los datos de esta página viven en una tabla de Supabase llamada `registros`.
 Ninguna cifra ni ningún texto que se muestre se escribe a mano en el HTML: todo
 sale de esa tabla o de lo que la persona escriba en el formulario.
 
-*(En la sesión le agregas las columnas que acabes usando.)*
+Columnas que tiene hoy `registros`:
+
+| Columna | Qué guarda |
+|---|---|
+| `id` | Identificador autogenerado de cada sugerencia |
+| `created_at` | Fecha y hora en que se guardó |
+| `nombre` | Nombre de quien escribe (opcional) |
+| `numero_empleado` | Número de empleado de quien escribe (opcional) |
+| `tipo_observacion` | Líderes, Organización o Equipo |
+| `mensaje` | El texto de la sugerencia |
+
+El contador que se ve en la página cuenta cuántos renglones tiene la tabla.
 
 ## 3. Cómo quiero que trabajes aquí
 
